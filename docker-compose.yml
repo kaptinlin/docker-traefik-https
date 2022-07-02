@@ -1,0 +1,53 @@
+version: "3.9"
+services:
+  traefik:
+    image: "traefik:latest"
+    container_name: traefik
+    hostname: traefik
+    command:
+      - --entrypoints.web.address=:80
+      - --entrypoints.websecure.address=:443
+      - --providers.docker
+      - --providers.docker.exposedByDefault=false
+      - --api
+      - --certificatesresolvers.letsencrypt.acme.email=${TRAEFIK_ACME_EMAIL}
+      - --certificatesresolvers.letsencrypt.acme.storage=./config/acme.json
+      # - --certificatesresolvers.le.acme.tlschallenge=true
+      - --entrypoints.websecure.http.tls.certResolver=letsencrypt
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "./config:/config"
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      # Dashboard
+      - "traefik.http.routers.traefik.rule=Host(`dashboard.${DOMAIN}`)"
+      - "traefik.http.routers.traefik.service=api@internal"
+      - "traefik.http.routers.traefik.tls=true"
+      - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.traefik.entrypoints=websecure"
+      # global redirect to https
+      - "traefik.http.routers.http-catchall.rule=hostregexp(`{host:.+}`)"
+      - "traefik.http.routers.http-catchall.entrypoints=web"
+      - "traefik.http.routers.http-catchall.middlewares=redirect-to-https"
+      # middleware redirect
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+
+  my-app:
+    image: containous/whoami:v1.3.0
+    hostname: whoami
+    container_name: whoami
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.my-app.rule=Host(`whoami.${DOMAIN}`)"
+      - "traefik.http.routers.my-app.entrypoints=websecure"
+      - "traefik.http.routers.my-app.tls=true"
+      - "traefik.http.routers.my-app.tls.certresolver=letsencrypt"
+networks:
+  default:
+    name: traefik-network
+    external: true
