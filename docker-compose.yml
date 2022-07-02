@@ -12,6 +12,7 @@ services:
       - --api
       - --certificatesresolvers.letsencrypt.acme.email=${TRAEFIK_ACME_EMAIL}
       - --certificatesresolvers.letsencrypt.acme.storage=./config/acme.json
+      - --certificatesresolvers.letsencrypt.acme.httpChallenge.entryPoint=web
       # - --certificatesresolvers.le.acme.tlschallenge=true
       - --entrypoints.websecure.http.tls.certResolver=letsencrypt
     ports:
